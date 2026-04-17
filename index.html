@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Busca de Certificados</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f3;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 0.5px solid rgba(0,0,0,0.1);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .logo-area {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .logo-area h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+
+    .logo-area p {
+      font-size: 14px;
+      color: #777;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 6px;
+      margin-top: 1rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fafafa;
+      color: #1a1a1a;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: #4a90d9;
+      background: #fff;
+    }
+
+    input[type="text"]::placeholder {
+      color: #bbb;
+    }
+
+    .btn {
+      margin-top: 1.5rem;
+      width: 100%;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 500;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn:hover { background: #333; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    .result {
+      margin-top: 1.5rem;
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .result.success {
+      background: #eaf3de;
+      border: 0.5px solid #97c459;
+      color: #3b6d11;
+      display: block;
+    }
+
+    .result.error {
+      background: #fcebeb;
+      border: 0.5px solid #f09595;
+      color: #791f1f;
+      display: block;
+    }
+
+    .result.loading {
+      background: #e6f1fb;
+      border: 0.5px solid #85b7eb;
+      color: #185fa5;
+      display: block;
+    }
+
+    .download-btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 9px 18px;
+      background: #3b6d11;
+      color: #fff;
+      border-radius: 7px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+
+    .download-btn:hover { background: #27500a; }
+
+    .hint {
+      margin-top: 0.5rem;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .divider {
+      border: none;
+      border-top: 0.5px solid #eee;
+      margin: 1.5rem 0 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <div class="logo-area">
+    <!-- Substitua pelo logo da sua empresa se quiser -->
+    <h1>Certificados de Produtos</h1>
+    <p>Informe o código e o lote para localizar o certificado</p>
+  </div>
+
+  <hr class="divider" />
+
+  <label for="codigo">Código do produto</label>
+  <input type="text" id="codigo" placeholder="Ex: ABC123" autocomplete="off" />
+
+  <label for="lote">Número do lote</label>
+  <input type="text" id="lote" placeholder="Ex: 2024001" autocomplete="off" />
+
+  <p class="hint">Os campos não diferenciam maiúsculas de minúsculas.</p>
+
+  <button class="btn" onclick="buscar()">Buscar certificado</button>
+
+  <div id="resultado" class="result"></div>
+
+</div>
+
+<script>
+  // =======================================================
+  //  CONFIGURAÇÃO — altere apenas estas duas linhas
+  // =======================================================
+  const SHAREPOINT_BASE_URL = "https://alphatecsys.sharepoint.com/:f:/s/";
+  const PASTA_RELATIVA     = "/Carvalhaes/IgAhQvTnSfBPRZk2n-X5FBS7AZ7Eff9zHLkrZGA5ggKV9nc?e=yt6Y3l";
+  // =======================================================
+
+  function normalizar(str) {
+    return str.trim().toUpperCase().replace(/\s+/g, "");
+  }
+
+  async function buscar() {
+    const codigo = normalizar(document.getElementById("codigo").value);
+    const lote   = normalizar(document.getElementById("lote").value);
+    const res    = document.getElementById("resultado");
+
+    if (!codigo || !lote) {
+      res.className = "result error";
+      res.innerHTML = "Preencha o código e o lote antes de buscar.";
+      return;
+    }
+
+    const nomeArquivo = `${codigo}-${lote}.pdf`;
+    const urlArquivo  = `${SHAREPOINT_BASE_URL}${PASTA_RELATIVA}/${encodeURIComponent(nomeArquivo)}`;
+
+    res.className = "result loading";
+    res.innerHTML = "Buscando certificado…";
+
+    try {
+      // Usa a API REST do SharePoint para verificar se o arquivo existe
+      const caminhoCompleto = `${PASTA_RELATIVA}/${nomeArquivo}`;
+      const apiUrl = `${SHAREPOINT_BASE_URL}/_api/web/GetFileByServerRelativeUrl('${encodeURIComponent(caminhoCompleto)}')`;
+
+      const check = await fetch(apiUrl, {
+        method: "GET",
+        headers: { "Accept": "application/json;odata=verbose" }
+      });
+
+      if (check.ok) {
+        mostrarSucesso(res, nomeArquivo, urlArquivo);
+      } else {
+        mostrarErroNaoEncontrado(res);
+      }
+
+    } catch (e) {
+      // Se a rede falhar completamente
+      res.className = "result error";
+      res.innerHTML = "Não foi possível se conectar ao servidor. Verifique sua conexão.";
+    }
+  }
+
+  function mostrarErroNaoEncontrado(res) {
+    res.className = "result error";
+    res.innerHTML = `
+      <strong>Certificado não encontrado.</strong><br>
+      Por favor, consulte nosso time regulatório em:<br>
+      <a href="mailto:regulatorios@calibrescientific.com.br" style="color: #791f1f; font-weight: 500;">
+        regulatorios@calibrescientific.com.br
+      </a>
+    `;
+  }
+
+  function mostrarSucesso(res, nome, url) {
+    res.className = "result success";
+    res.innerHTML = `
+      <strong>Certificado encontrado!</strong><br>
+      Arquivo: <code>${nome}</code><br>
+      <a class="download-btn" href="${url}" target="_blank" download>
+        Baixar certificado (PDF)
+      </a>
+    `;
+  }
+
+  // Permitir busca com Enter
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") buscar();
+  });
+</script>
+
+</body>
+</html>
